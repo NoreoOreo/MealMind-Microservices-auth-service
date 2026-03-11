@@ -10,7 +10,7 @@ settings = get_settings()
 app = FastAPI(title="Auth Service", version="0.1.0", lifespan=lifespan)
 
 # register routers
-api_prefix = "/api/v1"
+api_prefix = ""
 app.include_router(auth_router, prefix=api_prefix)
 app.include_router(groups_router, prefix=api_prefix)
 app.include_router(permissions_router, prefix=api_prefix)

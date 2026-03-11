@@ -8,7 +8,7 @@ class PermissionBase(BaseModel):
 
 
 class PermissionOut(PermissionBase):
-    id: int
+    id: str
 
     class Config:
         from_attributes = True

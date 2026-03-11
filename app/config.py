@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     refresh_token_expire_minutes: int = Field(default=60 * 24 * 7)
     redis_url: str = Field(default="redis://localhost:6379/0")
     redis_queue_key: str = Field(default="auth:queue")
+    reset_schema_on_start: bool = Field(default=False, description="Drop & recreate DB schema on startup (destructive)")
 
     class Config:
         env_file = ".env"

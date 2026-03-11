@@ -21,4 +21,6 @@ async def get_session() -> AsyncSession:
 async def init_db() -> None:
     from app import models  # ensure models imported
     async with engine.begin() as conn:
+        if settings.reset_schema_on_start:
+            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

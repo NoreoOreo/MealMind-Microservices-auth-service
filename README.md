@@ -18,6 +18,8 @@ export REDIS_URL='redis://localhost:6379/0'
 export PROFILE_ADMIN_PASSWORD='changeme'
 export MEAL_ADMIN_PASSWORD='changeme'
 export AI_ADMIN_PASSWORD='changeme'
+# rebuild schema on startup (destructive, use once when migrating to UUID ids)
+# export RESET_SCHEMA_ON_START=true
 
 python main.py --reload
 ```

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from sqlalchemy import select, delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import selectinload
 
 from app.database import AsyncSessionLocal, init_db
@@ -34,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 async def seed_defaults(session: AsyncSession) -> None:
-    """Seed permissions, groups, and service users."""
+    """Seed permissions, groups, and service users (idempotent, no drop/recreate)."""
     perms = [
         "auth:read",
         "auth:write",
