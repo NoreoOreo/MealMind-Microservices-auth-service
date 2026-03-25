@@ -9,6 +9,8 @@ from .user import (
 from .permission import PermissionBase, PermissionCreate, PermissionOut, PermissionUpdate
 from .group import GroupBase, GroupCreate, GroupOut, GroupUpdate
 from .message import Message
+from .oauth import OAuthClientCreate, OAuthClientOut, OAuthClientRegisterResponse, OAuthAuthorizeRequest
+from .oauth import OpenIDClientCreate
 
 __all__ = [
     "UserCreate",
@@ -26,4 +28,9 @@ __all__ = [
     "GroupOut",
     "GroupUpdate",
     "Message",
+    "OAuthClientCreate",
+    "OpenIDClientCreate",
+    "OAuthClientOut",
+    "OAuthClientRegisterResponse",
+    "OAuthAuthorizeRequest",
 ]
