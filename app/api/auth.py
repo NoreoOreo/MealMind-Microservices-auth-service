@@ -3,7 +3,7 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.oauth import _issue_user_oauth_tokens
+from app.oauth import issue_user_tokens
 from app.database import get_session
 from app.models import User
 from app.schemas import LoginRequest, RefreshRequest, TokenPair, UserCreate, UserOut
@@ -34,7 +34,7 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_sessi
     user: User | None = await session.scalar(select(User).where(User.email == payload.email))
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
-    return TokenPair(**(await _issue_user_oauth_tokens(user, scopes=[])))
+    return TokenPair(**(await issue_user_tokens(user, scopes=[])))
 
 
 @router.post("/refresh", response_model=TokenPair)
@@ -50,4 +50,4 @@ async def refresh_tokens(payload: RefreshRequest, session: AsyncSession = Depend
     user: User | None = await session.scalar(select(User).where(User.id == token_data.sub))
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return TokenPair(**(await _issue_user_oauth_tokens(user, scopes=[])))
+    return TokenPair(**(await issue_user_tokens(user, scopes=[])))

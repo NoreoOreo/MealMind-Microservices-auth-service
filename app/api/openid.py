@@ -9,20 +9,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_session
 from app.models import OAuthClient, User
+from app.oauth import (
+    anon,
+    audit,
+    client_to_out,
+    create_authorization_code,
+    deserialize_list,
+    oauth_authorize_impl,
+    oauth_token_impl,
+    register_client,
+    validate_openid_client,
+    validate_scope,
+)
 from app.schemas import OAuthAuthorizeRequest, OAuthClientOut, OAuthClientRegisterResponse, OpenIDClientCreate
 from app.security import decode_token, get_current_user, get_jwks, get_oidc_status, require_permission, verify_password
-from app.api.oauth import (
-    _anon,
-    _audit,
-    _client_to_out,
-    _create_authorization_code,
-    _deserialize_list,
-    _oauth_authorize_impl,
-    _oauth_token_impl,
-    _register_client,
-    _validate_openid_client,
-    _validate_scope,
-)
 
 router = APIRouter(tags=["openid"])
 settings = get_settings()
@@ -35,8 +35,8 @@ async def register_openid_client(
     current_user: User = Depends(get_current_user),
 ):
     await require_permission("auth:write", current_user=current_user)
-    client, client_secret = await _register_client(payload, session)
-    out = _client_to_out(client)
+    client, client_secret = await register_client(payload, session)
+    out = client_to_out(client)
     return OAuthClientRegisterResponse(**out.model_dump(), client_secret=client_secret)
 
 
@@ -47,7 +47,7 @@ async def list_openid_clients(
 ):
     await require_permission("auth:read", current_user=current_user)
     clients = (await session.scalars(select(OAuthClient).order_by(OAuthClient.created_at.desc()))).all()
-    return [_client_to_out(client) for client in clients if "openid" in _deserialize_list(client.scopes)]
+    return [client_to_out(client) for client in clients if "openid" in deserialize_list(client.scopes)]
 
 
 @router.get("/openid/authorize", response_class=HTMLResponse)
@@ -68,18 +68,18 @@ async def openid_authorize_browser(
     client = await session.scalar(select(OAuthClient).where(OAuthClient.client_id == client_id))
     if not client or not client.is_active:
         raise HTTPException(status_code=400, detail="Unknown client_id")
-    _validate_openid_client(client)
+    validate_openid_client(client)
 
-    redirect_uris = _deserialize_list(client.redirect_uris)
+    redirect_uris = deserialize_list(client.redirect_uris)
     if redirect_uri not in redirect_uris:
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
-    scopes = _validate_scope(scope, _deserialize_list(client.scopes))
+    scopes = validate_scope(scope, deserialize_list(client.scopes))
     if "openid" not in scopes:
         raise HTTPException(status_code=400, detail="OpenID scope is required")
-    _audit(
+    audit(
         "openid_authorize_requested",
-        client=_anon(client.client_id),
+        client=anon(client.client_id),
         scopes=",".join(scopes),
         pkce=bool(code_challenge),
     )
@@ -106,9 +106,6 @@ async def openid_authorize_browser(
       <input type=\"hidden\" name=\"state\" value=\"{escape(state or '')}\">
       <input type=\"hidden\" name=\"code_challenge\" value=\"{escape(code_challenge or '')}\">
       <input type=\"hidden\" name=\"code_challenge_method\" value=\"{escape(method)}\">
-      <label>Email<br><input type=\"email\" name=\"username\" style=\"width: 100%;\"></label><br><br>
-      <label>Password<br><input type=\"password\" name=\"password\" style=\"width: 100%;\"></label><br><br>
-      <p style=\"margin: 4px 0 8px 0; color: #666;\">OR use existing access token</p>
       <label>Access token<br><textarea name=\"access_token\" rows=\"6\" style=\"width: 100%;\"></textarea></label><br><br>
       <button type=\"submit\">Login</button>
     </form>
@@ -134,13 +131,13 @@ async def openid_authorize_login(
     client = await session.scalar(select(OAuthClient).where(OAuthClient.client_id == client_id))
     if not client or not client.is_active:
         raise HTTPException(status_code=400, detail="Unknown client_id")
-    _validate_openid_client(client)
+    validate_openid_client(client)
 
-    redirect_uris = _deserialize_list(client.redirect_uris)
+    redirect_uris = deserialize_list(client.redirect_uris)
     if redirect_uri not in redirect_uris:
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
-    scopes = _validate_scope(scope, _deserialize_list(client.scopes))
+    scopes = validate_scope(scope, deserialize_list(client.scopes))
     if "openid" not in scopes:
         raise HTTPException(status_code=400, detail="OpenID scope is required")
 
@@ -160,14 +157,14 @@ async def openid_authorize_login(
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
-    _audit(
+    audit(
         "openid_authorize_authenticated",
-        user=_anon(str(user.id)),
-        client=_anon(client.client_id),
+        user=anon(str(user.id)),
+        client=anon(client.client_id),
         method="access_token" if token_value else "password",
     )
 
-    result = await _create_authorization_code(
+    result = await create_authorization_code(
         session=session,
         client=client,
         user=user,
@@ -182,7 +179,7 @@ async def openid_authorize_login(
 
 @router.post("/openid/authorize")
 async def openid_authorize(payload: OAuthAuthorizeRequest, session: AsyncSession = Depends(get_session)):
-    return await _oauth_authorize_impl(payload, session, openid_only=True)
+    return await oauth_authorize_impl(payload, session, openid_only=True)
 
 
 @router.post("/openid/token")
@@ -191,7 +188,7 @@ async def openid_token(
     session: AsyncSession = Depends(get_session),
     authorization: str | None = Header(default=None),
 ):
-    return await _oauth_token_impl(request, session, authorization, openid_only=True)
+    return await oauth_token_impl(request, session, authorization, openid_only=True)
 
 
 @router.get("/.well-known/openid-configuration")
