@@ -15,11 +15,8 @@ async def main() -> int:
     redis = aioredis.from_url(redis_url, decode_responses=True, encoding="utf-8")
     try:
         reply_queue = f"test:reply:{uuid.uuid4().hex[:8]}"
-        message_id = str(uuid.uuid4())
-        print(message_id)
         payload = {
             "event_type": "user.authenticate",
-            "message_id": message_id,
             "sender": "cli-test",
             "target": reply_queue,
             "payload": {"jwt_token": token},

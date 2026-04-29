@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Tuple
 
 from jose import JWTError
@@ -89,15 +88,12 @@ ACTION_HANDLERS = {
 
 async def handle_event_authenticate(redis, payload: dict) -> None:
     reply_key = extract_reply_key(payload)
-    msg_id = payload.get("message_id") or str(uuid.uuid4())
     jwt_token = payload.get("payload", {}).get("jwt_token")
     if not jwt_token:
         await publish(redis, reply_key, {
             "event_type": "user.authenticate.result",
             "status": "error",
             "reason": "missing_jwt_token",
-            "in_reply_to": msg_id,
-            "refer": settings.redis_queue_key,
         })
         return
 
@@ -112,16 +108,12 @@ async def handle_event_authenticate(redis, payload: dict) -> None:
                 "event_type": "user.authenticate.result",
                 "status": "error",
                 "reason": "user_not_found",
-                "in_reply_to": msg_id,
-                "refer": settings.redis_queue_key,
             })
             return
     await publish(redis, reply_key, {
         "event_type": "user.authenticate.result",
         "status": "ok",
         "user": user_payload,
-        "in_reply_to": msg_id,
-        "refer": settings.redis_queue_key,
     })
 
 
